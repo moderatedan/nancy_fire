@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Nancy Fire — a personal dashboard for publicly disclosed congressional stock trades (STOCK Act filings). Static, private, no third-party trackers.">
+<title>Nancy Fire 🔥 — disclosed trades dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1220;
+    --card: #121b2e;
+    --card-2: #1a2540;
+    --line: #23304e;
+    --text: #e8edf7;
+    --dim: #8b97b0;
+    --ember: #f2a516;        /* the fire */
+    --ember-soft: rgba(242, 165, 22, .14);
+    --buy: #2fd47f;
+    --sell: #ff5d5d;
+    --radius: 14px;
+    /* Eye-glow positions — tune these to your image (see README) */
+    --eye1-x: 42%; --eye1-y: 34%;
+    --eye2-x: 58%; --eye2-y: 34%;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Archivo", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 70% -10%, #14203a 0%, var(--bg) 55%);
+    color: var(--text); min-height: 100vh;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px;
+    padding: 20px clamp(16px, 4vw, 44px);
+    border-bottom: 1px solid var(--line);
+  }
+  h1 { font-weight: 900; font-size: 1.3rem; letter-spacing: .01em; }
+  h1 .fire { color: var(--ember); }
+  .freshness { font-family: "IBM Plex Mono", monospace; font-size: .72rem; color: var(--dim); }
+  .freshness b { color: var(--ember); font-weight: 600; }
+
+  #demoBanner {
+    display: none; text-align: center; font-weight: 700; font-size: .82rem;
+    background: var(--ember); color: #241a02; padding: 8px 16px;
+  }
+  #demoBanner.show { display: block; }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 26px clamp(16px, 4vw, 44px) 90px; }
+
+  .grid { display: grid; grid-template-columns: 320px 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 22px;
+  }
+  h2 { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+  .sub { font-size: .78rem; color: var(--dim); margin-bottom: 14px; line-height: 1.6; }
+
+  /* ---------- character panel ---------- */
+  .nancy-stage { position: relative; text-align: center; user-select: none; }
+  .nancy-wrap {
+    position: relative; display: inline-block; cursor: pointer;
+    border-radius: 12px; overflow: hidden;
+  }
+  .nancy-wrap img, .nancy-wrap svg.placeholder {
+    display: block; width: 100%; max-width: 270px; border-radius: 12px;
+    filter: drop-shadow(0 0 0px var(--ember));
+    transition: filter .4s;
+  }
+  .nancy-stage.hot .nancy-wrap img,
+  .nancy-stage.hot .nancy-wrap svg.placeholder {
+    animation: emberpulse 2.4s ease-in-out infinite;
+  }
+  @keyframes emberpulse {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(242,165,22,.35)); }
+    50%      { filter: drop-shadow(0 0 22px rgba(242,165,22,.85)); }
+  }
+  .eye {
+    position: absolute; width: 26px; height: 26px; border-radius: 50%;
+    transform: translate(-50%, -50%); pointer-events: none; opacity: 0;
+    background: radial-gradient(circle, rgba(255,220,120,.95) 0%,
+                rgba(242,165,22,.55) 45%, transparent 72%);
+    mix-blend-mode: screen;
+  }
+  .nancy-stage.hot .eye { opacity: 1; animation: eyeflicker 1.8s infinite; }
+  .eye.e1 { left: var(--eye1-x); top: var(--eye1-y); }
+  .eye.e2 { left: var(--eye2-x); top: var(--eye2-y); }
+  @keyframes eyeflicker { 0%,100% { opacity:.65; } 40% { opacity:1; } 60% { opacity:.8; } }
+  @media (prefers-reduced-motion: reduce) {
+    .nancy-stage.hot .nancy-wrap img, .nancy-stage.hot .eye,
+    .nancy-stage.hot .nancy-wrap svg.placeholder { animation: none; opacity: .9; }
+  }
+  #smoke { position: absolute; inset: 0; pointer-events: none; }
+  .click-hint { font-size: .7rem; color: var(--dim); margin-top: 10px; }
+  #clickCount { color: var(--ember); font-weight: 600; }
+
+  /* ---------- momentum gauge ---------- */
+  .gauge-track {
+    height: 14px; border-radius: 7px; margin: 12px 0 6px;
+    background: linear-gradient(90deg, var(--sell), #7a6a3a 50%, var(--buy));
+    position: relative;
+  }
+  .gauge-needle {
+    position: absolute; top: -5px; width: 4px; height: 24px; border-radius: 2px;
+    background: var(--text); box-shadow: 0 0 8px rgba(255,255,255,.6);
+    transform: translateX(-50%); transition: left 1s ease;
+  }
+  .gauge-labels { display: flex; justify-content: space-between;
+    font-size: .68rem; color: var(--dim); font-family: "IBM Plex Mono", monospace; }
+  #gaugeReadout { text-align: center; font-weight: 700; margin-top: 8px; }
+
+  /* ---------- stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px; margin-bottom: 22px; }
+  .stat { background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px 16px; }
+  .stat .n { font-family: "IBM Plex Mono", monospace; font-weight: 600;
+    font-size: 1.25rem; }
+  .stat .l { font-size: .68rem; color: var(--dim); text-transform: uppercase;
+    letter-spacing: .05em; margin-top: 2px; }
+  .stat.buy .n { color: var(--buy); } .stat.sell .n { color: var(--sell); }
+  .stat.vol .n { color: var(--ember); }
+
+  /* ---------- chart ---------- */
+  #chart { width: 100%; height: 170px; display: block; }
+  .bar-buy { fill: var(--buy); } .bar-sell { fill: var(--sell); }
+  .axis-label { fill: var(--dim); font: 9px "IBM Plex Mono", monospace; }
+
+  /* ---------- table ---------- */
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filters input, .filters select {
+    background: var(--card-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 12px; font: 400 .85rem "IBM Plex Mono", monospace;
+  }
+  .filters input:focus, .filters select:focus { outline: none; border-color: var(--ember); }
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line);
+    white-space: nowrap; }
+  th { color: var(--dim); font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .05em; position: sticky; top: 0; background: var(--card); }
+  td.num { font-family: "IBM Plex Mono", monospace; }
+  .pill { display: inline-block; border-radius: 99px; padding: 2px 10px;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase; }
+  .pill.buy { background: rgba(47,212,127,.15); color: var(--buy); }
+  .pill.sell { background: rgba(255,93,93,.15); color: var(--sell); }
+  .pill.other { background: var(--card-2); color: var(--dim); }
+  .lag-late { color: var(--sell); font-weight: 600; }
+  .src a { color: var(--dim); font-size: .75rem; }
+  .empty { text-align: center; color: var(--dim); padding: 26px; font-size: .85rem; }
+
+  .honesty { font-size: .74rem; color: var(--dim); line-height: 1.7; }
+  .honesty b { color: var(--text); }
+
+  footer { text-align: center; font-size: .72rem; color: var(--dim);
+    padding: 26px 16px 44px; line-height: 1.9; }
+  footer a { color: var(--dim); }
+</style>
+</head>
+<body>
+
+<div id="demoBanner">DEMO DATA — these trades are fictional. Run <span class="mono">python3 fetch_trades.py</span> to load real disclosures.</div>
+
+<header>
+  <h1>Nancy <span class="fire">Fire</span> <span style="font-weight:500;font-size:.8rem;color:var(--dim)">· disclosed-trades dashboard</span></h1>
+  <div class="freshness" id="freshness">loading…</div>
+</header>
+
+<main>
+  <div class="grid">
+    <!-- ============ LEFT: character + gauge ============ -->
+    <div>
+      <div class="card nancy-stage" id="nancyStage">
+        <div class="nancy-wrap" id="nancyWrap" title="Click for a bull-run burst">
+          <img id="nancyImg" alt="Nancy Fire mascot" src="nancy.png">
+          <div class="eye e1"></div>
+          <div class="eye e2"></div>
+          <canvas id="smoke"></canvas>
+        </div>
+        <div class="click-hint">Eyes glow when disclosure momentum runs bullish.<br>
+          Clicked <span id="clickCount">0</span> times · each click = one smoke burst</div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <h2>Disclosure momentum</h2>
+        <p class="sub">Estimated buy vs. sell volume in the trailing 90 days of
+        <em>filings</em> — not live market sentiment. Disclosures lag trades by
+        up to 45 days.</p>
+        <div class="gauge-track"><div class="gauge-needle" id="needle" style="left:50%"></div></div>
+        <div class="gauge-labels"><span>SELLING</span><span>NEUTRAL</span><span>BUYING</span></div>
+        <div id="gaugeReadout" class="mono">—</div>
+      </div>
+
+      <div class="card honesty" style="margin-top:18px">
+        <h2>Read me before reading charts</h2>
+        <p style="margin-top:8px">
+          <b>Source:</b> public STOCK Act periodic transaction reports.
+          <b>Lag:</b> members have 45 days to file, so nothing here is real-time.
+          <b>Amounts:</b> filed as ranges; volume figures use range midpoints and
+          are estimates. <b>Owner:</b> filings often list a spouse or dependent —
+          the owner column preserves what was filed.
+          <b>Not financial advice</b> — this is a public-records viewer.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ RIGHT: stats, chart, table ============ -->
+    <div>
+      <div class="stats" id="stats"></div>
+
+      <div class="card" style="margin-bottom:22px">
+        <h2>Monthly activity <span style="color:var(--dim);font-weight:500">(estimated $ volume)</span></h2>
+        <p class="sub">Green up = buys, red down = sells, by transaction month.</p>
+        <svg id="chart" preserveAspectRatio="none"></svg>
+      </div>
+
+      <div class="card">
+        <h2>Disclosed trades</h2>
+        <p class="sub" id="tableSub"></p>
+        <div class="filters">
+          <input type="search" id="q" placeholder="Filter: ticker or asset…">
+          <select id="typeFilter">
+            <option value="">All types</option>
+            <option value="buy">Buys</option>
+            <option value="sell">Sells</option>
+          </select>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Trade date</th><th>Ticker</th><th>Asset</th><th>Type</th>
+              <th>Amount (filed range)</th><th>Owner</th><th>Filed after</th><th>Filing</th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Nancy Fire v2 · MIT License · data from public STOCK Act filings via the
+  House Stock Watcher mirror ·
+  <a href="https://github.com/moderatedan/nancy_fire">source on GitHub</a><br>
+  A personal, static, tracker-free viewer of public records. Follows filings,
+  not people.
+</footer>
+
+<script>
+// Embedded fallback so the page works before any data is fetched.
+// EVERY TRADE BELOW IS FICTIONAL — member "J. Sample (DEMO)" does not exist.
+const DEMO_DATA = {
+  sample: true, generated: "demo", member_filter: "DEMO",
+  source: "embedded demo data (fictional)",
+  trades: [
+    {transaction_date:"2026-07-06",disclosure_date:"2026-07-18",lag_days:12,ticker:"NVDA",asset:"NVIDIA Corporation — call options",type:"buy",amount:"$1,000,001 - $5,000,000",amount_mid:3000000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-06-24",disclosure_date:"2026-07-30",lag_days:36,ticker:"MSFT",asset:"Microsoft Corp",type:"buy",amount:"$250,001 - $500,000",amount_mid:375000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-06-10",disclosure_date:"2026-08-02",lag_days:53,ticker:"AAPL",asset:"Apple Inc",type:"sell",amount:"$500,001 - $1,000,000",amount_mid:750000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-05-28",disclosure_date:"2026-06-20",lag_days:23,ticker:"AVGO",asset:"Broadcom Inc",type:"buy",amount:"$100,001 - $250,000",amount_mid:175000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-05-14",disclosure_date:"2026-06-01",lag_days:18,ticker:"",asset:"US Treasury Notes",type:"buy",amount:"$50,001 - $100,000",amount_mid:75000,owner:"Self",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-04-30",disclosure_date:"2026-05-25",lag_days:25,ticker:"GOOGL",asset:"Alphabet Inc Class A",type:"sell",amount:"$100,001 - $250,000",amount_mid:175000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-04-12",disclosure_date:"2026-05-05",lag_days:23,ticker:"PANW",asset:"Palo Alto Networks",type:"buy",amount:"$250,001 - $500,000",amount_mid:375000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-03-20",disclosure_date:"2026-04-15",lag_days:26,ticker:"TSLA",asset:"Tesla Inc",type:"sell",amount:"$15,001 - $50,000",amount_mid:32500,owner:"Dependent",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-02-25",disclosure_date:"2026-03-30",lag_days:33,ticker:"VST",asset:"Vistra Corp",type:"buy",amount:"$50,001 - $100,000",amount_mid:75000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-01-30",disclosure_date:"2026-03-05",lag_days:34,ticker:"AMZN",asset:"Amazon.com Inc",type:"buy",amount:"$100,001 - $250,000",amount_mid:175000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-01-12",disclosure_date:"2026-02-10",lag_days:29,ticker:"DIS",asset:"Walt Disney Co",type:"sell",amount:"$15,001 - $50,000",amount_mid:32500,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2025-12-18",disclosure_date:"2026-01-20",lag_days:33,ticker:"CRWD",asset:"CrowdStrike Holdings",type:"buy",amount:"$250,001 - $500,000",amount_mid:375000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""}
+  ]
+};
+
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => n == null ? "—" :
+    "$" + (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" :
+           n >= 1e3 ? Math.round(n / 1e3) + "K" : n);
+
+  /* ---------------- image fallback chain ---------------- */
+  // Prefer nancy.png; fall back to the original repo filename; else a flame.
+  const IMG_CANDIDATES = ["nancy.png", "8b8YFRSSshx4Sfy9fk9w--1--0j7p9.png",
+                          "8b8YFRSSshx4Sfy9fk9w--1--0j7p9.jpeg"];
+  let imgIdx = 0;
+  const img = $("nancyImg");
+  img.addEventListener("error", () => {
+    imgIdx++;
+    if (imgIdx < IMG_CANDIDATES.length) { img.src = IMG_CANDIDATES[imgIdx]; return; }
+    // No image found — swap in an SVG flame so the layout still sings.
+    img.outerHTML = `<svg class="placeholder" viewBox="0 0 100 120"
+      xmlns="http://www.w3.org/2000/svg" aria-label="flame placeholder">
+      <path d="M50 8 C58 30 78 38 78 66 a28 30 0 1 1 -56 0 C22 46 40 34 50 8 Z"
+        fill="#f2a516" opacity=".9"/>
+      <path d="M50 40 C54 52 64 56 64 72 a14 16 0 1 1 -28 0 C36 60 46 52 50 40 Z"
+        fill="#ffd66e"/></svg>`;
+  });
+
+  /* ---------------- smoke / ember particles ---------------- */
+  const canvas = $("smoke");
+  const ctx = canvas.getContext("2d");
+  let particles = [];
+  function sizeCanvas() {
+    const r = $("nancyWrap").getBoundingClientRect();
+    canvas.width = r.width; canvas.height = r.height;
+  }
+  window.addEventListener("resize", sizeCanvas);
+
+  function burst(n) {
+    sizeCanvas();
+    for (let i = 0; i < n; i++) {
+      particles.push({
+        x: canvas.width * (0.3 + Math.random() * 0.4),
+        y: canvas.height * (0.75 + Math.random() * 0.2),
+        vx: (Math.random() - 0.5) * 0.7,
+        vy: -(0.6 + Math.random() * 1.4),
+        r: 3 + Math.random() * 7,
+        life: 1,
+        ember: Math.random() < 0.35,
+      });
+    }
+  }
+  function tick() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles = particles.filter((p) => p.life > 0.02);
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy; p.vy *= 0.995;
+      p.r += p.ember ? -0.02 : 0.08;
+      p.life *= p.ember ? 0.975 : 0.965;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(p.r, 0.5), 0, Math.PI * 2);
+      ctx.fillStyle = p.ember
+        ? `rgba(242,165,22,${p.life})`
+        : `rgba(160,170,190,${p.life * 0.30})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(tick);
+  }
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduceMotion) tick();
+
+  let clicks = 0;
+  $("nancyWrap").addEventListener("click", () => {
+    clicks++;
+    $("clickCount").textContent = clicks;
+    if (!reduceMotion) burst(26);
+  });
+
+  /* ---------------- data loading ---------------- */
+  async function loadData() {
+    try {
+      const resp = await fetch("data/trades.json", { cache: "no-store" });
+      if (!resp.ok) throw new Error(resp.status);
+      const data = await resp.json();
+      if (!Array.isArray(data.trades) || !data.trades.length) throw new Error("empty");
+      return data;
+    } catch {
+      return DEMO_DATA; // file:// or no data yet — run in demo mode
+    }
+  }
+
+  /* ---------------- rendering ---------------- */
+  let ALL = [];
+
+  function severityStats(trades) {
+    const buys = trades.filter((t) => t.type === "buy");
+    const sells = trades.filter((t) => t.type === "sell");
+    const vol = (xs) => xs.reduce((s, t) => s + (t.amount_mid || 0), 0);
+    return { buys, sells, buyVol: vol(buys), sellVol: vol(sells),
+             totalVol: vol(trades) };
+  }
+
+  function renderStats(trades) {
+    const s = severityStats(trades);
+    const tickers = {};
+    for (const t of trades) if (t.ticker) tickers[t.ticker] = (tickers[t.ticker] || 0) + 1;
+    const top = Object.entries(tickers).sort((a, b) => b[1] - a[1])[0];
+    $("stats").innerHTML = `
+      <div class="stat"><div class="n mono">${trades.length}</div><div class="l">Disclosed trades</div></div>
+      <div class="stat buy"><div class="n mono">${s.buys.length}</div><div class="l">Buys</div></div>
+      <div class="stat sell"><div class="n mono">${s.sells.length}</div><div class="l">Sells</div></div>
+      <div class="stat vol"><div class="n mono">${money(s.totalVol)}</div><div class="l">Est. volume*</div></div>
+      <div class="stat"><div class="n mono">${top ? esc(top[0]) : "—"}</div><div class="l">Most-traded ticker</div></div>`;
+  }
+
+  function renderGauge(trades) {
+    const cutoffMs = Date.now() - 90 * 86400000;
+    const recent = trades.filter((t) =>
+      new Date(t.disclosure_date || t.transaction_date).getTime() >= cutoffMs);
+    const s = severityStats(recent.length ? recent : trades);
+    const total = s.buyVol + s.sellVol;
+    const ratio = total ? s.buyVol / total : 0.5;   // 0 = all sells, 1 = all buys
+    $("needle").style.left = (8 + ratio * 84) + "%";
+    const bull = ratio >= 0.6;
+    $("gaugeReadout").textContent = total
+      ? `${Math.round(ratio * 100)}% of est. recent volume is buying`
+      : "not enough recent filings to score";
+    $("nancyStage").classList.toggle("hot", bull);
+    if (bull && !reduceMotion) burst(40);   // bull run: smoke on load
+  }
+
+  function renderChart(trades) {
+    const byMonth = {};
+    for (const t of trades) {
+      const m = t.transaction_date.slice(0, 7);
+      byMonth[m] ??= { buy: 0, sell: 0 };
+      if (t.type === "buy") byMonth[m].buy += t.amount_mid || 0;
+      if (t.type === "sell") byMonth[m].sell += t.amount_mid || 0;
+    }
+    const months = Object.keys(byMonth).sort().slice(-12);
+    const maxV = Math.max(1, ...months.flatMap((m) => [byMonth[m].buy, byMonth[m].sell]));
+    const W = 640, H = 170, mid = 78, bw = W / Math.max(months.length, 1);
+    let svg = `<line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="var(--line)"/>`;
+    months.forEach((m, i) => {
+      const x = i * bw + bw * 0.18, w = bw * 0.64;
+      const bh = (byMonth[m].buy / maxV) * 62;
+      const sh = (byMonth[m].sell / maxV) * 62;
+      if (bh) svg += `<rect class="bar-buy" x="${x}" y="${mid - bh}" width="${w}" height="${bh}" rx="2"><title>${m} buys ≈ ${money(byMonth[m].buy)}</title></rect>`;
+      if (sh) svg += `<rect class="bar-sell" x="${x}" y="${mid + 2}" width="${w}" height="${sh}" rx="2"><title>${m} sells ≈ ${money(byMonth[m].sell)}</title></rect>`;
+      svg += `<text class="axis-label" x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${m.slice(2)}</text>`;
+    });
+    const chart = $("chart");
+    chart.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    chart.innerHTML = svg;
+  }
+
+  function renderTable() {
+    const q = $("q").value.trim().toLowerCase();
+    const type = $("typeFilter").value;
+    const rows = ALL.filter((t) =>
+      (!type || t.type === type) &&
+      (!q || (t.ticker + " " + t.asset).toLowerCase().includes(q)));
+    $("rows").innerHTML = rows.length ? rows.map((t) => `
+      <tr>
+        <td class="num">${esc(t.transaction_date)}</td>
+        <td class="num"><b>${esc(t.ticker) || "—"}</b></td>
+        <td>${esc(t.asset)}</td>
+        <td><span class="pill ${t.type === "buy" ? "buy" : t.type === "sell" ? "sell" : "other"}">${esc(t.type)}</span></td>
+        <td class="num">${esc(t.amount)}</td>
+        <td>${esc(t.owner) || "—"}</td>
+        <td class="num ${t.lag_days > 45 ? "lag-late" : ""}">${t.lag_days == null ? "—" : t.lag_days + "d" + (t.lag_days > 45 ? " ⚠" : "")}</td>
+        <td class="src">${t.source_link ? `<a href="${esc(t.source_link)}" target="_blank" rel="noopener">PTR ↗</a>` : "—"}</td>
+      </tr>`).join("")
+      : `<tr><td colspan="8"><div class="empty">No trades match the filter.</div></td></tr>`;
+    $("tableSub").textContent =
+      `${rows.length} of ${ALL.length} filings shown. "Filed after" = days between trade and disclosure (⚠ over the 45-day STOCK Act window).`;
+  }
+
+  $("q").addEventListener("input", renderTable);
+  $("typeFilter").addEventListener("change", renderTable);
+
+  /* ---------------- boot ---------------- */
+  loadData().then((data) => {
+    ALL = data.trades;
+    if (data.sample) $("demoBanner").classList.add("show");
+    const who = data.sample ? "DEMO" : (data.member_filter || "all members");
+    $("freshness").innerHTML =
+      `<b>${esc(who)}</b> · ${ALL.length} filings · updated ${esc(data.generated)} · ${esc(data.source)}`;
+    renderStats(ALL);
+    renderGauge(ALL);
+    renderChart(ALL);
+    renderTable();
+    sizeCanvas();
+  });
+})();
+</script>
+</body>
+</html>

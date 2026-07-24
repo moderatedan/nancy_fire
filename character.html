@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nancy Fire 🔥</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a12;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .dashboard {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Character Section */
+        .character-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(20, 20, 35, 0.85);
+            border-radius: 24px;
+            padding: 2rem 1.5rem;
+            border: 1px solid rgba(255, 107, 53, 0.15);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .cutout-container {
+            position: relative;
+            width: 100%;
+            max-width: 280px;
+            aspect-ratio: 1/1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        .cutout-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 8px 24px rgba(255, 107, 53, 0.15));
+            transition: filter 0.6s ease;
+        }
+
+        .cutout-container img.hot {
+            filter: drop-shadow(0 8px 40px rgba(255, 107, 53, 0.5));
+        }
+
+        /* Eye Glow */
+        .eye-glow {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            width: 18%;
+            aspect-ratio: 1/1;
+            background: radial-gradient(circle, #ff6b35, transparent 70%);
+            box-shadow: 0 0 40px rgba(255, 107, 53, 0.4);
+        }
+
+        .eye-glow.active {
+            opacity: 1;
+            animation: pulse 0.8s ease-in-out infinite alternate;
+        }
+
+        .eye-glow.buy {
+            background: radial-gradient(circle, #00ff88, #00cc66 40%, transparent 70%);
+            box-shadow: 0 0 60px rgba(0, 255, 136, 0.5);
+        }
+
+        .eye-glow.sell {
+            background: radial-gradient(circle, #ff4444, #cc0000 40%, transparent 70%);
+            box-shadow: 0 0 60px rgba(255, 68, 68, 0.5);
+        }
+
+        .eye-left { top: 31%; left: 26%; }
+        .eye-right { top: 31%; right: 26%; }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            100% { transform: scale(1.4); opacity: 1; }
+        }
+
+        /* Status Badges */
+        .status-badges {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .badge {
+            padding: 0.4rem 1.2rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            letter-spacing: 0.3px;
+        }
+
+        .badge.buy-momentum { border-color: #00ff88; color: #00ff88; }
+        .badge.hot { border-color: #ff6b35; color: #ff6b35; animation: hot-pulse 1s ease-in-out infinite; }
+
+        @keyframes hot-pulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(255, 107, 53, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(255, 107, 53, 0.5); }
+        }
+
+        /* Smoke Canvas */
+        #smoke-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .cutout-container img { position: relative; z-index: 1; }
+
+        /* Data Section */
+        .data-section {
+            background: rgba(20, 20, 35, 0.85);
+            border-radius: 24px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(4px);
+        }
+
+        .data-section h2 {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #8888aa;
+            margin-bottom: 1.25rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 0.6rem 0.4rem;
+            color: #666688;
+            font-weight: 500;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 0.6rem 0.4rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        td:first-child { color: #8888aa; font-size: 0.75rem; }
+        td:nth-child(2) { font-weight: 600; color: #e0e0e0; }
+        .type-buy { color: #00ff88; font-weight: 600; }
+        .type-sell { color: #ff4444; font-weight: 600; }
+
+        .ticker-tape {
+            margin-top: 1.25rem;
+            padding: 0.6rem 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            white-space: nowrap;
+            font-size: 0.8rem;
+            color: #666688;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .ticker-tape span { margin-right: 1.5rem; }
+        .ticker-tape .up { color: #00ff88; }
+        .ticker-tape .down { color: #ff4444; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .cutout-container { max-width: 200px; }
+            .character-section { padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <!-- Character Section -->
+    <div class="character-section">
+        <div class="cutout-container">
+            <img id="nancy-img" src="nancy.png" alt="Nancy">
+            <canvas id="smoke-canvas"></canvas>
+            <div class="eye-glow eye-left" id="eye-left"></div>
+            <div class="eye-glow eye-right" id="eye-right"></div>
+        </div>
+
+        <div class="status-badges">
+            <span class="badge" id="momentum-badge">📊 --% BUY</span>
+            <span class="badge hot" id="hot-badge" style="display:none;">🔥 HOT</span>
+        </div>
+    </div>
+
+    <!-- Data Section -->
+    <div class="data-section">
+        <h2>📋 DISCLOSED TRADES</h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>DATE</th>
+                        <th>TICKER</th>
+                        <th>TYPE</th>
+                        <th>AMOUNT</th>
+                        <th>OWNER</th>
+                    </tr>
+                </thead>
+                <tbody id="trades-body"></tbody>
+            </table>
+        </div>
+        <div class="ticker-tape" id="ticker-tape"></div>
+    </div>
+</div>
+
+<script>
+    // Load data from trades.json
+    let trades = [];
+
+    async function loadTrades() {
+        try {
+            const res = await fetch('trades.json');
+            const data = await res.json();
+            if (data.trades && data.trades.length) {
+                trades = data.trades;
+            } else {
+                // fallback demo
+                trades = [
+                    { transaction_date: "2026-07-06", ticker: "NVDA", type: "buy", amount: "$1,000,001-$5,000,000", owner: "Spouse" },
+                    { transaction_date: "2026-07-06", ticker: "MSFT", type: "buy", amount: "$250,001-$500,000", owner: "Spouse" },
+                    { transaction_date: "2026-06-10", ticker: "AAPL", type: "sell", amount: "$500,001-$1,000,000", owner: "Spouse" },
+                    { transaction_date: "2026-05-28", ticker: "AVGO", type: "buy", amount: "$100,001-$250,000", owner: "Spouse" },
+                ];
+            }
+            renderTable(trades);
+            updateTicker(trades);
+            updateStats(trades);
+        } catch (e) {
+            console.warn('Using demo data');
+            trades = [
+                { transaction_date: "2026-07-06", ticker: "NVDA", type: "buy", amount: "$1,000,001-$5,000,000", owner: "Spouse" },
+                { transaction_date: "2026-07-06", ticker: "MSFT", type: "buy", amount: "$250,001-$500,000", owner: "Spouse" },
+                { transaction_date: "2026-06-10", ticker: "AAPL", type: "sell", amount: "$500,001-$1,000,000", owner: "Spouse" },
+            ];
+            renderTable(trades);
+            updateTicker(trades);
+            updateStats(trades);
+        }
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('trades-body');
+        tbody.innerHTML = data.map(t => `
+            <tr>
+                <td>${t.transaction_date || t.date || ''}</td>
+                <td>${t.ticker || ''}</td>
+                <td class="type-${(t.type || '').toLowerCase()}">${(t.type || '').toUpperCase()}</td>
+                <td>${t.amount || ''}</td>
+                <td>${t.owner || ''}</td>
+            </tr>
+        `).join('');
+    }
+
+    function updateTicker(data) {
+        const tape = document.getElementById('ticker-tape');
+        const symbols = data.map(t => {
+            const type = (t.type || '').toUpperCase();
+            const cls = type === 'BUY' ? 'up' : 'down';
+            return `${t.ticker || ''} <span class="${cls}">${type}</span>`;
+        });
+        tape.innerHTML = symbols.join('  •  ');
+    }
+
+    function updateStats(data) {
+        const buys = data.filter(t => (t.type || '').toLowerCase() === 'buy').length;
+        const total = data.length;
+        const pct = total ? Math.round((buys / total) * 100) : 0;
+
+        document.getElementById('momentum-badge').textContent = `📊 ${pct}% BUY`;
+
+        const hotBadge = document.getElementById('hot-badge');
+        const img = document.getElementById('nancy-img');
+        const eyeLeft = document.getElementById('eye-left');
+        const eyeRight = document.getElementById('eye-right');
+
+        if (pct >= 60) {
+            hotBadge.style.display = 'inline-block';
+            img.classList.add('hot');
+            eyeLeft.className = 'eye-glow eye-left active buy';
+            eyeRight.className = 'eye-glow eye-right active buy';
+        } else {
+            hotBadge.style.display = 'none';
+            img.classList.remove('hot');
+            eyeLeft.className = 'eye-glow eye-left';
+            eyeRight.className = 'eye-glow eye-right';
+        }
+    }
+
+    // Smoke particle system
+    const canvas = document.getElementById('smoke-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    class Particle {
+        constructor() {
+            this.x = canvas.width / 2 + (Math.random() - 0.5) * 80;
+            this.y = canvas.height / 2 + (Math.random() - 0.5) * 60;
+            this.size = 15 + Math.random() * 40;
+            this.speed = 0.3 + Math.random() * 1.2;
+            this.opacity = 0.2 + Math.random() * 0.3;
+            this.dx = (Math.random() - 0.5) * 0.8;
+            this.dy = -0.3 - Math.random() * 1.2;
+            this.life = 60 + Math.random() * 80;
+            this.maxLife = this.life;
+        }
+        update() {
+            this.x += this.dx;
+            this.y += this.dy;
+            this.size += 0.2;
+            this.opacity -= 0.001;
+            this.life--;
+            if (this.life <= 0) this.reset();
+        }
+        reset() {
+            this.x = canvas.width / 2 + (Math.random() - 0.5) * 80;
+            this.y = canvas.height / 2 + (Math.random() - 0.5) * 60;
+            this.size = 15 + Math.random() * 40;
+            this.speed = 0.3 + Math.random() * 1.2;
+            this.opacity = 0.2 + Math.random() * 0.3;
+            this.dx = (Math.random() - 0.5) * 0.8;
+            this.dy = -0.3 - Math.random() * 1.2;
+            this.life = 60 + Math.random() * 80;
+            this.maxLife = this.life;
+        }
+        draw() {
+            const alpha = (this.life / this.maxLife) * this.opacity;
+            const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+            gradient.addColorStop(0, `rgba(255, 107, 53, ${alpha * 0.5})`);
+            gradient.addColorStop(0.5, `rgba(255, 200, 50, ${alpha * 0.2})`);
+            gradient.addColorStop(1, `rgba(255, 107, 53, 0)`);
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    for (let i = 0; i < 25; i++) {
+        const p = new Particle();
+        p.opacity = Math.random() * 0.1;
+        particles.push(p);
+    }
+
+    function animateSmoke() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => { p.update(); p.draw(); });
+
+        const pct = parseInt(document.getElementById('momentum-badge').textContent) || 0;
+        if (pct >= 60) {
+            for (let i = 0; i < 2; i++) {
+                const p = new Particle();
+                p.opacity = 0.25 + Math.random() * 0.3;
+                p.size = 25 + Math.random() * 50;
+                particles.push(p);
+                if (particles.length > 80) particles.shift();
+            }
+        }
+        requestAnimationFrame(animateSmoke);
+    }
+
+    // Start
+    loadTrades();
+    animateSmoke();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# Nancy Fire v2 has ZERO third-party dependencies.
+# fetch_trades.py is pure Python 3.9+ standard library (urllib, json, csv).
+# The dashboard is static HTML/JS. Nothing to pip install.
+#
+# (v1 needed pillow, pandas, requests, beautifulsoup4, matplotlib — all gone.)

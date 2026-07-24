@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NANCY FIRE AMP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bezel-hi: #8a8aa0;
+    --bezel-lo: #14141c;
+    --face: linear-gradient(180deg, #4b4b60 0%, #33333f 45%, #26262f 100%);
+    --face-flat: #2e2e3a;
+    --title: linear-gradient(180deg, #3c4a66 0%, #1d2437 100%);
+    --gold: #d6b25e;
+    --lcd-bg: #050f06;
+    --lcd: #23f36b;
+    --lcd-dim: #0e7a37;
+    --amber: #ffb300;
+    --buy: #23f36b;
+    --sell: #ff4d4d;
+    --px: "Silkscreen", "Courier New", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  html, body { background: #0a0a10; height: 100%; }
+  body {
+    font-family: var(--px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 24px 10px; color: #cfcfe0;
+  }
+
+  /* ---------- chrome helpers (the Winamp bevel look) ---------- */
+  .bevel-out { border: 2px solid; border-color: var(--bezel-hi) var(--bezel-lo) var(--bezel-lo) var(--bezel-hi); }
+  .bevel-in  { border: 2px solid; border-color: var(--bezel-lo) var(--bezel-hi) var(--bezel-hi) var(--bezel-lo); }
+
+  .amp { width: 640px; max-width: 100%; }
+
+  .win { background: var(--face); box-shadow: 0 14px 40px rgba(0,0,0,.6); }
+
+  .titlebar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--title); padding: 4px 8px; cursor: grab;
+    border-bottom: 2px solid var(--bezel-lo);
+  }
+  .titlebar:active { cursor: grabbing; }
+  .titlebar .dot { width: 9px; height: 9px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffe9a8, var(--amber) 60%, #7a5200); }
+  .titlebar .t { flex: 1; text-align: center; font-size: 10px; letter-spacing: 2px;
+    color: var(--gold); text-shadow: 1px 1px 0 #000; }
+  .winbtn {
+    width: 16px; height: 14px; font-size: 8px; line-height: 10px; text-align: center;
+    background: var(--face-flat); color: #cfcfe0; cursor: pointer;
+    border: 1px solid; border-color: var(--bezel-hi) var(--bezel-lo) var(--bezel-lo) var(--bezel-hi);
+  }
+  .winbtn:active { border-color: var(--bezel-lo) var(--bezel-hi) var(--bezel-hi) var(--bezel-lo); }
+
+  .deck { display: grid; grid-template-columns: 1fr 148px; gap: 8px; padding: 10px; }
+  @media (max-width: 560px) { .deck { grid-template-columns: 1fr; } }
+
+  /* ---------- LCD ---------- */
+  .lcd { background: var(--lcd-bg); padding: 8px 10px; overflow: hidden; }
+  .lcd .digits { display: flex; align-items: baseline; gap: 10px; }
+  .lcd .time { font-size: 30px; font-weight: 700; color: var(--lcd);
+    text-shadow: 0 0 8px rgba(35,243,107,.55); letter-spacing: 2px; }
+  .lcd .time small { font-size: 9px; color: var(--lcd-dim); letter-spacing: 1px; }
+  .lcd .flag { margin-left: auto; font-size: 9px; padding: 2px 6px; }
+  .flag.buy { color: var(--buy); border: 1px solid var(--buy); }
+  .flag.sell { color: var(--sell); border: 1px solid var(--sell); }
+  .flag.demo { color: var(--amber); border: 1px solid var(--amber); animation: blink 1.4s step-end infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  .marquee-clip { overflow: hidden; margin-top: 6px; }
+  .marquee { display: inline-block; white-space: nowrap; font-size: 11px;
+    color: var(--lcd); text-shadow: 0 0 6px rgba(35,243,107,.4);
+    animation: crawl 16s linear infinite; }
+  @keyframes crawl { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  .slots { display: flex; gap: 6px; margin-top: 8px; }
+  .slot { flex: 1; background: var(--lcd-bg); text-align: center; padding: 4px 2px; }
+  .slot .v { font-size: 12px; color: var(--amber); text-shadow: 0 0 6px rgba(255,179,0,.45); }
+  .slot .k { font-size: 7px; color: var(--lcd-dim); letter-spacing: 1px; }
+
+  #spectrum { display: block; width: 100%; height: 52px; background: var(--lcd-bg); margin-top: 8px; }
+
+  /* ---------- Nancy vis ---------- */
+  .visbox { position: relative; background: var(--lcd-bg); overflow: hidden;
+    display: flex; align-items: center; justify-content: center; min-height: 168px; }
+  .visbox img, .visbox svg.flame { width: 100%; height: 100%; object-fit: cover;
+    image-rendering: auto; opacity: .92; }
+  .visbox.hot img, .visbox.hot svg.flame { animation: emberpulse 2.2s ease-in-out infinite; }
+  @keyframes emberpulse {
+    0%,100% { filter: drop-shadow(0 0 4px rgba(255,179,0,.3)); }
+    50%     { filter: drop-shadow(0 0 16px rgba(255,179,0,.85)); }
+  }
+  .eye { position: absolute; width: 20px; height: 20px; border-radius: 50%;
+    transform: translate(-50%,-50%); opacity: 0; mix-blend-mode: screen; pointer-events: none;
+    background: radial-gradient(circle, rgba(255,235,150,.95), rgba(255,179,0,.5) 50%, transparent 72%); }
+  .visbox.hot .eye { opacity: 1; animation: blink 1.8s ease-in-out infinite; }
+  .eye.e1 { left: var(--eye1-x, 42%); top: var(--eye1-y, 34%); }
+  .eye.e2 { left: var(--eye2-x, 58%); top: var(--eye2-y, 34%); }
+  #smoke { position: absolute; inset: 0; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee, .visbox.hot img, .visbox.hot .eye, .flag.demo { animation: none; }
+  }
+
+  /* ---------- transport ---------- */
+  .transport { display: flex; align-items: center; gap: 6px; padding: 0 10px 10px; }
+  .tbtn {
+    width: 44px; height: 30px; background: var(--face-flat); color: #e8e8f4;
+    font-family: var(--px); font-size: 12px; cursor: pointer;
+    border: 2px solid; border-color: var(--bezel-hi) var(--bezel-lo) var(--bezel-lo) var(--bezel-hi);
+  }
+  .tbtn:active, .tbtn.on { border-color: var(--bezel-lo) var(--bezel-hi) var(--bezel-hi) var(--bezel-lo);
+    color: var(--amber); }
+  .speed { flex: 1; display: flex; align-items: center; gap: 8px; }
+  .speed label { font-size: 8px; color: #9a9ab0; letter-spacing: 1px; }
+  input[type="range"] { flex: 1; accent-color: var(--amber); height: 14px; background: transparent; }
+
+  /* ---------- playlist ---------- */
+  .pl { margin-top: 8px; }
+  .pl-list { background: var(--lcd-bg); height: 190px; overflow-y: auto; padding: 4px 0; }
+  .pl-row { display: flex; gap: 8px; padding: 3px 10px; font-size: 10px;
+    color: var(--lcd-dim); cursor: pointer; white-space: nowrap; }
+  .pl-row:hover { color: var(--lcd); }
+  .pl-row.now { background: #0c2a14; color: var(--lcd); }
+  .pl-row .i { width: 26px; text-align: right; }
+  .pl-row .d { width: 78px; }
+  .pl-row .tk { width: 52px; color: inherit; font-weight: 700; }
+  .pl-row .ty { width: 40px; }
+  .pl-row .ty.buy { color: var(--buy); } .pl-row .ty.sell { color: var(--sell); }
+  .pl-row .amt { margin-left: auto; }
+  .pl-list::-webkit-scrollbar { width: 12px; }
+  .pl-list::-webkit-scrollbar-track { background: var(--face-flat); }
+  .pl-list::-webkit-scrollbar-thumb { background: var(--face);
+    border: 2px solid; border-color: var(--bezel-hi) var(--bezel-lo) var(--bezel-lo) var(--bezel-hi); }
+
+  /* ---------- ticker ---------- */
+  .tape { margin-top: 8px; background: var(--lcd-bg); padding: 5px 0; overflow: hidden; }
+  .tape .marquee { animation-duration: 28s; font-size: 10px; }
+
+  .foot { text-align: center; font-size: 8px; color: #6d6d84; padding: 8px 6px 2px;
+    letter-spacing: 1px; line-height: 1.9; }
+  .foot b { color: #9a9ab0; }
+</style>
+</head>
+<body>
+<div class="amp">
+  <!-- ================= MAIN DECK ================= -->
+  <div class="win bevel-out">
+    <div class="titlebar" id="dragMain">
+      <span class="dot"></span>
+      <span class="t">NANCY FIRE AMP — IT REALLY WHIPS THE PORTFOLIO'S... FILINGS</span>
+      <span class="winbtn" id="btnMin" title="Minimize">_</span>
+      <span class="winbtn" id="btnClose" title="Close">X</span>
+    </div>
+
+    <div class="deck">
+      <div>
+        <div class="lcd bevel-in">
+          <div class="digits">
+            <span class="time" id="lagTime">--<small> D</small></span>
+            <small style="color:var(--lcd-dim);font-size:8px;letter-spacing:1px">FILED<br>AFTER</small>
+            <span class="flag demo" id="modeFlag">DEMO</span>
+          </div>
+          <div class="marquee-clip"><span class="marquee" id="nowPlaying">*** LOADING DISCLOSURES ***&nbsp;&nbsp;&nbsp;</span></div>
+        </div>
+
+        <div class="slots">
+          <div class="slot bevel-in"><div class="v" id="slotBuy">--</div><div class="k">BUY %</div></div>
+          <div class="slot bevel-in"><div class="v" id="slotCount">--</div><div class="k">TRACKS</div></div>
+          <div class="slot bevel-in"><div class="v" id="slotVol">--</div><div class="k">EST VOL</div></div>
+          <div class="slot bevel-in"><div class="v" id="slotTicker">--</div><div class="k">TOP TKR</div></div>
+        </div>
+
+        <canvas id="spectrum" class="bevel-in"></canvas>
+      </div>
+
+      <div class="visbox bevel-in" id="visbox" title="Click for smoke">
+        <img id="nancyImg" alt="Nancy Fire mascot" src="nancy.png">
+        <div class="eye e1"></div><div class="eye e2"></div>
+        <canvas id="smoke"></canvas>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button class="tbtn" id="btnPrev" title="Previous filing (←)">⏮</button>
+      <button class="tbtn" id="btnPlay" title="Play/pause the filing reel (space)">▶</button>
+      <button class="tbtn" id="btnStop" title="Stop">⏹</button>
+      <button class="tbtn" id="btnNext" title="Next filing (→)">⏭</button>
+      <button class="tbtn" id="btnShuf" title="Shuffle">🔀</button>
+      <div class="speed">
+        <label>REEL SPEED</label>
+        <input type="range" id="speed" min="1" max="10" value="4" title="Seconds per filing">
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PLAYLIST ================= -->
+  <div class="win bevel-out pl">
+    <div class="titlebar" id="dragPl">
+      <span class="dot"></span>
+      <span class="t">DISCLOSURE PLAYLIST</span>
+    </div>
+    <div class="pl-list bevel-in" id="plList"></div>
+  </div>
+
+  <!-- ================= TICKER TAPE ================= -->
+  <div class="win bevel-out tape bevel-in"><span class="marquee" id="tape"></span></div>
+
+  <div class="foot">
+    PUBLIC STOCK ACT FILINGS · UP TO 45-DAY LAG · AMOUNTS ARE FILED RANGES ·
+    <b>NOT FINANCIAL ADVICE</b> · A PUBLIC-RECORDS VIEWER WITH A SKIN ON IT
+  </div>
+</div>
+
+<script>
+// Same clearly-fictional fallback as index.html — "J. Sample (DEMO)" is not real.
+const DEMO_DATA = {
+  sample: true, generated: "demo", member_filter: "DEMO",
+  source: "embedded demo data (fictional)",
+  trades: [
+    {transaction_date:"2026-07-06",disclosure_date:"2026-07-18",lag_days:12,ticker:"NVDA",asset:"NVIDIA Corporation — call options",type:"buy",amount:"$1,000,001 - $5,000,000",amount_mid:3000000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-06-24",disclosure_date:"2026-07-30",lag_days:36,ticker:"MSFT",asset:"Microsoft Corp",type:"buy",amount:"$250,001 - $500,000",amount_mid:375000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-06-10",disclosure_date:"2026-08-02",lag_days:53,ticker:"AAPL",asset:"Apple Inc",type:"sell",amount:"$500,001 - $1,000,000",amount_mid:750000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-05-28",disclosure_date:"2026-06-20",lag_days:23,ticker:"AVGO",asset:"Broadcom Inc",type:"buy",amount:"$100,001 - $250,000",amount_mid:175000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-05-14",disclosure_date:"2026-06-01",lag_days:18,ticker:"",asset:"US Treasury Notes",type:"buy",amount:"$50,001 - $100,000",amount_mid:75000,owner:"Self",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-04-30",disclosure_date:"2026-05-25",lag_days:25,ticker:"GOOGL",asset:"Alphabet Inc Class A",type:"sell",amount:"$100,001 - $250,000",amount_mid:175000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-04-12",disclosure_date:"2026-05-05",lag_days:23,ticker:"PANW",asset:"Palo Alto Networks",type:"buy",amount:"$250,001 - $500,000",amount_mid:375000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-03-20",disclosure_date:"2026-04-15",lag_days:26,ticker:"TSLA",asset:"Tesla Inc",type:"sell",amount:"$15,001 - $50,000",amount_mid:32500,owner:"Dependent",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-02-25",disclosure_date:"2026-03-30",lag_days:33,ticker:"VST",asset:"Vistra Corp",type:"buy",amount:"$50,001 - $100,000",amount_mid:75000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-01-30",disclosure_date:"2026-03-05",lag_days:34,ticker:"AMZN",asset:"Amazon.com Inc",type:"buy",amount:"$100,001 - $250,000",amount_mid:175000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2026-01-12",disclosure_date:"2026-02-10",lag_days:29,ticker:"DIS",asset:"Walt Disney Co",type:"sell",amount:"$15,001 - $50,000",amount_mid:32500,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""},
+    {transaction_date:"2025-12-18",disclosure_date:"2026-01-20",lag_days:33,ticker:"CRWD",asset:"CrowdStrike Holdings",type:"buy",amount:"$250,001 - $500,000",amount_mid:375000,owner:"Spouse",member:"J. Sample (DEMO)",source_link:""}
+  ]
+};
+
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => n == null ? "--" :
+    "$" + (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" :
+           n >= 1e3 ? Math.round(n / 1e3) + "K" : n);
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- native-shell bridge (WebKitGTK wrapper) ---------- */
+  const bridge = (msg) => {
+    try { window.webkit.messageHandlers.shell.postMessage(msg); return true; }
+    catch { return false; }
+  };
+  ["dragMain", "dragPl"].forEach((id) =>
+    $(id).addEventListener("mousedown", (e) => {
+      if (e.target.classList.contains("winbtn")) return;
+      bridge("drag"); // no-op in a plain browser
+    }));
+  $("btnClose").addEventListener("click", () => { if (!bridge("close")) window.close(); });
+  $("btnMin").addEventListener("click", () => bridge("minimize"));
+
+  /* ---------- mascot image fallback ---------- */
+  const CANDIDATES = ["nancy.png", "8b8YFRSSshx4Sfy9fk9w--1--0j7p9.png",
+                      "8b8YFRSSshx4Sfy9fk9w--1--0j7p9.jpeg"];
+  let ci = 0;
+  const img = $("nancyImg");
+  img.addEventListener("error", () => {
+    ci++;
+    if (ci < CANDIDATES.length) { img.src = CANDIDATES[ci]; return; }
+    img.outerHTML = `<svg class="flame" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 8 C58 30 78 38 78 66 a28 30 0 1 1 -56 0 C22 46 40 34 50 8 Z" fill="#ffb300" opacity=".9"/>
+      <path d="M50 40 C54 52 64 56 64 72 a14 16 0 1 1 -28 0 C36 60 46 52 50 40 Z" fill="#ffe28a"/></svg>`;
+  });
+
+  /* ---------- smoke ---------- */
+  const smoke = $("smoke"), sctx = smoke.getContext("2d");
+  let particles = [];
+  function sizeSmoke() {
+    const r = $("visbox").getBoundingClientRect();
+    smoke.width = r.width; smoke.height = r.height;
+  }
+  window.addEventListener("resize", sizeSmoke);
+  function burst(n) {
+    sizeSmoke();
+    for (let i = 0; i < n; i++) particles.push({
+      x: smoke.width * (0.3 + Math.random() * 0.4),
+      y: smoke.height * (0.8 + Math.random() * 0.15),
+      vx: (Math.random() - 0.5) * 0.7, vy: -(0.6 + Math.random() * 1.3),
+      r: 2 + Math.random() * 6, life: 1, ember: Math.random() < 0.4,
+    });
+  }
+  function smokeTick() {
+    sctx.clearRect(0, 0, smoke.width, smoke.height);
+    particles = particles.filter((p) => p.life > 0.03);
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy; p.r += p.ember ? -0.015 : 0.07;
+      p.life *= p.ember ? 0.975 : 0.96;
+      sctx.beginPath();
+      sctx.arc(p.x, p.y, Math.max(p.r, 0.4), 0, Math.PI * 2);
+      sctx.fillStyle = p.ember ? `rgba(255,179,0,${p.life})`
+                               : `rgba(150,160,180,${p.life * 0.3})`;
+      sctx.fill();
+    }
+  }
+  $("visbox").addEventListener("click", () => { if (!reduceMotion) burst(24); });
+
+  /* ---------- spectrum analyzer ---------- */
+  const spec = $("spectrum"), xctx = spec.getContext("2d");
+  const NBARS = 24;
+  let levels = new Array(NBARS).fill(0), peaks = new Array(NBARS).fill(0);
+  let energy = 0.25; // driven by current trade size
+  function sizeSpec() {
+    spec.width = spec.clientWidth * devicePixelRatio;
+    spec.height = spec.clientHeight * devicePixelRatio;
+  }
+  window.addEventListener("resize", sizeSpec);
+  function specColor(frac) {
+    return frac > 0.85 ? "#ff4d4d" : frac > 0.6 ? "#ffb300" : "#23f36b";
+  }
+  function specTick() {
+    const W = spec.width, H = spec.height, bw = W / NBARS;
+    xctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < NBARS; i++) {
+      const target = playing || particles.length
+        ? energy * (0.35 + Math.random() * 0.85) * (1 - Math.abs(i - NBARS / 2) / NBARS)
+        : 0.04 + Math.random() * 0.05;
+      levels[i] += (Math.min(target, 1) - levels[i]) * 0.3;
+      peaks[i] = Math.max(peaks[i] - 0.008, levels[i]);
+      const segs = Math.round(levels[i] * 12);
+      for (let s = 0; s < segs; s++) {
+        const frac = s / 12;
+        xctx.fillStyle = specColor(frac);
+        xctx.fillRect(i * bw + bw * 0.15, H - (s + 1) * (H / 13),
+                      bw * 0.7, H / 13 - 2 * devicePixelRatio);
+      }
+      xctx.fillStyle = "#9a9ab0";
+      xctx.fillRect(i * bw + bw * 0.15, H - peaks[i] * H, bw * 0.7, 2 * devicePixelRatio);
+    }
+  }
+  function animate() { specTick(); smokeTick(); requestAnimationFrame(animate); }
+
+  /* ---------- the "player" ---------- */
+  let TRADES = [], idx = 0, playing = false, timer = null, shuffle = false;
+
+  function loadTrade(i, withFx = true) {
+    idx = ((i % TRADES.length) + TRADES.length) % TRADES.length;
+    const t = TRADES[idx];
+    $("lagTime").innerHTML = (t.lag_days == null ? "--" : t.lag_days) + "<small> D</small>";
+    $("lagTime").style.color = t.lag_days > 45 ? "var(--sell)" : "var(--lcd)";
+    const line = `${idx + 1}. ${t.transaction_date} · ${t.type.toUpperCase()} ` +
+      `${t.ticker || t.asset} · ${t.amount} · OWNER: ${(t.owner || "?").toUpperCase()}` +
+      ` · FILED ${t.disclosure_date || "?"}` + `${t.lag_days > 45 ? " · !! LATE FILING !!" : ""}` +
+      `\u00A0\u00A0\u00A0***\u00A0\u00A0\u00A0`;
+    $("nowPlaying").textContent = line + line;
+    const flag = $("modeFlag");
+    if (!flag.classList.contains("demo")) {
+      flag.textContent = t.type.toUpperCase();
+      flag.className = "flag " + (t.type === "buy" ? "buy" : "sell");
+    }
+    energy = Math.min(0.25 + (t.amount_mid || 0) / 4e6, 1);
+    document.querySelectorAll(".pl-row").forEach((r, ri) =>
+      r.classList.toggle("now", ri === idx));
+    const row = document.querySelectorAll(".pl-row")[idx];
+    if (row) row.scrollIntoView({ block: "nearest" });
+    if (withFx && !reduceMotion && t.type === "buy") burst(14);
+  }
+
+  function step(dir) { loadTrade(shuffle ? Math.floor(Math.random() * TRADES.length) : idx + dir); }
+
+  function setPlaying(on) {
+    playing = on;
+    $("btnPlay").textContent = on ? "⏸" : "▶";
+    $("btnPlay").classList.toggle("on", on);
+    clearInterval(timer);
+    if (on) timer = setInterval(() => step(1), (11 - +$("speed").value) * 1000);
+  }
+
+  $("btnPlay").addEventListener("click", () => setPlaying(!playing));
+  $("btnStop").addEventListener("click", () => { setPlaying(false); loadTrade(0, false); });
+  $("btnNext").addEventListener("click", () => step(1));
+  $("btnPrev").addEventListener("click", () => step(-1));
+  $("btnShuf").addEventListener("click", (e) => {
+    shuffle = !shuffle; e.target.classList.toggle("on", shuffle);
+  });
+  $("speed").addEventListener("input", () => { if (playing) setPlaying(true); });
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "Space") { e.preventDefault(); setPlaying(!playing); }
+    if (e.code === "ArrowRight") step(1);
+    if (e.code === "ArrowLeft") step(-1);
+  });
+
+  /* ---------- data + render ---------- */
+  async function loadData() {
+    try {
+      const r = await fetch("data/trades.json", { cache: "no-store" });
+      if (!r.ok) throw 0;
+      const d = await r.json();
+      if (!Array.isArray(d.trades) || !d.trades.length) throw 0;
+      return d;
+    } catch { return DEMO_DATA; }
+  }
+
+  loadData().then((data) => {
+    TRADES = data.trades;
+    const flag = $("modeFlag");
+    if (!data.sample) { flag.classList.remove("demo"); }
+    else { flag.textContent = "DEMO"; }
+
+    // playlist
+    $("plList").innerHTML = TRADES.map((t, i) => `
+      <div class="pl-row" data-i="${i}">
+        <span class="i">${i + 1}.</span>
+        <span class="d">${esc(t.transaction_date)}</span>
+        <span class="tk">${esc(t.ticker) || "----"}</span>
+        <span class="ty ${t.type === "buy" ? "buy" : t.type === "sell" ? "sell" : ""}">${esc(t.type.toUpperCase())}</span>
+        <span class="amt">${esc(t.amount)}</span>
+      </div>`).join("");
+    $("plList").addEventListener("click", (e) => {
+      const row = e.target.closest(".pl-row");
+      if (row) loadTrade(+row.dataset.i);
+    });
+
+    // stats slots
+    const buys = TRADES.filter((t) => t.type === "buy");
+    const sells = TRADES.filter((t) => t.type === "sell");
+    const vol = (xs) => xs.reduce((s, t) => s + (t.amount_mid || 0), 0);
+    const ratio = vol(buys) + vol(sells) ? vol(buys) / (vol(buys) + vol(sells)) : 0.5;
+    $("slotBuy").textContent = Math.round(ratio * 100);
+    $("slotCount").textContent = TRADES.length;
+    $("slotVol").textContent = money(vol(TRADES));
+    const tk = {};
+    for (const t of TRADES) if (t.ticker) tk[t.ticker] = (tk[t.ticker] || 0) + 1;
+    const top = Object.entries(tk).sort((a, b) => b[1] - a[1])[0];
+    $("slotTicker").textContent = top ? top[0] : "--";
+
+    // bull-run state
+    $("visbox").classList.toggle("hot", ratio >= 0.6);
+    if (ratio >= 0.6 && !reduceMotion) burst(30);
+
+    // ticker tape
+    const tape = TRADES.slice(0, 10).map((t) =>
+      `${t.ticker || t.asset.slice(0, 10)} ${t.type === "buy" ? "▲" : "▼"} ${t.amount}`
+    ).join("  ·  ") + `  ·  SRC: ${data.source.toUpperCase()}  ·  `;
+    $("tape").textContent = tape + tape;
+
+    loadTrade(0, false);
+    sizeSpec(); sizeSmoke();
+    animate();
+  });
+})();
+</script>
+</body>
+</html>

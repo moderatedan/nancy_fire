@@ -1,0 +1,36 @@
+{
+  "trades": [
+    {
+      "date": "2026-07-06",
+      "ticker": "NVDA",
+      "type": "BUY",
+      "amount": "1000001-5000000",
+      "owner": "Spouse",
+      "filed": "2026-07-18"
+    },
+    {
+      "date": "2026-07-06",
+      "ticker": "MSFT",
+      "type": "BUY",
+      "amount": "250001-500000",
+      "owner": "Spouse",
+      "filed": "2026-07-18"
+    },
+    {
+      "date": "2026-06-10",
+      "ticker": "AAPL",
+      "type": "SELL",
+      "amount": "500001-1000000",
+      "owner": "Spouse",
+      "filed": "2026-07-18"
+    },
+    {
+      "date": "2026-05-28",
+      "ticker": "AVGO",
+      "type": "BUY",
+      "amount": "100001-250000",
+      "owner": "Spouse",
+      "filed": "2026-07-18"
+    }
+  ]
+}

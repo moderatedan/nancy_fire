@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Nancy Fire Amp
+Comment=Winamp-skinned viewer for publicly disclosed congressional trades
+# Adjust the path after installing (see WINAMP.md):
+Exec=python3 /opt/nancy_fire/desktop/nancy_fire_desktop.py
+Path=/opt/nancy_fire
+Icon=multimedia-player
+Terminal=false
+Categories=Utility;Finance;
+Keywords=stocks;congress;winamp;tracker;
